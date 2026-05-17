@@ -1040,8 +1040,11 @@ body.theme-anime{--accent-primary:#ff6ec7;--accent-secondary:#e040fb;--accent-gr
 .fab-ai{position:fixed;bottom:28px;right:28px;width:58px;height:58px;border-radius:50%;background:var(--accent-gradient);border:none;color:#fff;font-size:1.4rem;cursor:pointer;z-index:200;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,212,255,.35);transition:all .3s cubic-bezier(.4,0,.2,1);animation:fabPulse 3s ease-in-out infinite}
 .fab-ai:hover{transform:scale(1.12);box-shadow:0 8px 36px rgba(0,212,255,.5)}
 @keyframes fabPulse{0%,100%{box-shadow:0 4px 24px rgba(0,212,255,.35)}50%{box-shadow:0 6px 32px rgba(0,212,255,.5)}}
-.fab-ai-tooltip{position:fixed;bottom:92px;right:20px;background:rgba(18,20,30,.95);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-md);padding:14px 18px;font-size:.85rem;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,.4);max-width:220px;animation:fadeIn .3s ease-out;backdrop-filter:blur(16px)}
+.fab-ai-tooltip{position:fixed;bottom:92px;right:20px;background:rgba(18,20,30,.95);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-md);padding:12px 10px 12px 14px;font-size:.85rem;z-index:200;box-shadow:0 12px 40px rgba(0,0,0,.4);max-width:240px;animation:fadeIn .3s ease-out;backdrop-filter:blur(16px);display:flex;align-items:flex-start;gap:10px;line-height:1.35}
 .fab-ai-tooltip::after{content:'';position:absolute;bottom:-8px;right:28px;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid rgba(18,20,30,.95)}
+.fab-ai-tooltip-text{display:flex;align-items:center;gap:6px;min-width:0}
+.fab-ai-tooltip-close{width:24px;height:24px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border:1px solid rgba(255,255,255,.08);border-radius:50%;background:rgba(255,255,255,.05);color:var(--text-secondary);cursor:pointer;font-size:.9rem;transition:var(--transition)}
+.fab-ai-tooltip-close:hover{color:var(--text-primary);background:rgba(255,255,255,.1);border-color:var(--border-hover);transform:scale(1.06)}
 
 /* ===== WATCHLIST ===== */
 .watchlist-list{display:flex;flex-direction:column;gap:10px}
@@ -1367,6 +1370,158 @@ body.theme-anime{--accent-primary:#ff6ec7;--accent-secondary:#e040fb;--accent-gr
 .card-gradient-border{position:relative;border:1px solid transparent;background-clip:padding-box}
 .card-gradient-border::before{content:'';position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(135deg,rgba(0,212,255,.3),rgba(124,58,237,.2));background-size:200% 200%;animation:gradientBorder 3s ease infinite;-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:0;transition:opacity .3s}
 .card-gradient-border:hover::before{opacity:1}
+
+/* ===== CODEX MOBILE POLISH ===== */
+:root{
+  --bottom-nav-height:64px;
+  --mobile-edge:16px;
+}
+@keyframes softPageIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes cardLiftIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes activeNavGlow{0%,100%{opacity:.45;transform:translateX(-50%) scaleX(.72)}50%{opacity:1;transform:translateX(-50%) scaleX(1)}}
+.page-transition{animation:softPageIn .42s cubic-bezier(.2,.8,.2,1) both}
+.card,.event-card,.music-card-mini,.history-item,.activity-item,.watchlist-item{will-change:transform}
+.card{position:relative}
+.card::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 42%);opacity:0;pointer-events:none;transition:opacity .28s ease}
+.card:hover::after{opacity:1}
+.bottom-nav-item.active::after{content:'';position:absolute;top:2px;left:50%;width:28px;height:2px;border-radius:999px;background:var(--accent-gradient);box-shadow:0 0 14px rgba(0,212,255,.45);animation:activeNavGlow 2.2s ease-in-out infinite}
+.bottom-nav-item.active::before{display:none}
+.mobile-menu.open{animation:softPageIn .22s cubic-bezier(.2,.8,.2,1) both}
+.rail-empty{width:min(440px,calc(100vw - (var(--mobile-edge) * 2)));min-height:178px;display:flex;align-items:center;gap:16px;padding:22px;background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(124,58,237,.045));border:1px dashed rgba(0,212,255,.18);border-radius:18px;color:var(--text-secondary)}
+.rail-empty-icon{width:52px;height:52px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:rgba(0,212,255,.09);color:var(--accent-primary);font-size:1.35rem;flex-shrink:0}
+.rail-empty-title{font-weight:700;color:var(--text-primary);margin-bottom:4px}
+.rail-empty-sub{font-size:.85rem;line-height:1.45}
+
+@media(max-width:768px){
+  :root{--bottom-nav-height:64px;--mobile-edge:16px}
+  html{scroll-padding-top:72px}
+  body{padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom))}
+  .navbar{height:60px;z-index:160}
+  .navbar-inner{gap:8px;padding:0 var(--mobile-edge)}
+  .brand-icon{width:34px;height:34px;border-radius:10px}
+  .brand-text{font-size:1.05rem}
+  .mobile-menu-btn{width:42px;height:42px;border-radius:14px}
+  .mobile-menu{top:60px;left:10px;right:10px;max-height:calc(100svh - 72px);overflow:auto;border:1px solid rgba(0,212,255,.09);border-top:0;border-radius:0 0 22px 22px;padding:14px;z-index:150}
+  .mobile-menu-links .nav-link{padding:13px 14px}
+  .mobile-menu-actions{justify-content:stretch}
+  .mobile-menu-actions .btn{min-height:42px}
+  .main-content{padding-top:68px;padding-bottom:calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom))}
+  .hero{margin-top:-68px}
+  .hero-bg,.hero-overlay{min-height:500px}
+  .hero-overlay{align-items:flex-end;background:linear-gradient(to top,var(--bg-primary) 0%,rgba(5,7,13,.35) 44%,rgba(5,7,13,.86) 100%),linear-gradient(to right,rgba(5,7,13,.96),rgba(5,7,13,.25))}
+  .hero-content{padding-top:126px;padding-bottom:44px;max-width:100%}
+  .hero-meta{flex-wrap:wrap}
+  .hero-actions{flex-wrap:wrap}
+  .hero-actions .btn{flex:1 1 150px;min-height:44px}
+  .mood-bar{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;margin-left:calc(var(--mobile-edge) * -1);margin-right:calc(var(--mobile-edge) * -1);padding:2px var(--mobile-edge) 12px;scrollbar-width:none}
+  .mood-bar::-webkit-scrollbar{display:none}
+  .mood-chip{flex:0 0 auto;min-height:44px;scroll-snap-align:start}
+  .section-header{align-items:flex-start;gap:12px;margin-bottom:16px}
+  .section-title{line-height:1.18;margin-bottom:0}
+  .section-link{white-space:nowrap;margin-top:2px}
+  .home-section{margin-bottom:42px}
+  .carousel{gap:14px;margin-left:calc(var(--mobile-edge) * -1);margin-right:calc(var(--mobile-edge) * -1);padding-left:var(--mobile-edge);padding-right:var(--mobile-edge);scroll-padding-left:var(--mobile-edge)}
+  .rail-empty{min-height:140px;padding:18px;width:calc(100vw - (var(--mobile-edge) * 2))}
+  .card{animation:cardLiftIn .36s ease both}
+  .card-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.35em;line-height:1.18}
+  .card-subtitle{white-space:normal;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical}
+  .card-body{padding:12px}
+  .search-bar{flex-direction:column;gap:10px}
+  .search-bar .btn,.search-bar button{width:100%}
+  .results-info{align-items:flex-start;flex-direction:column;gap:6px}
+  .events-filters{gap:12px}
+  .filter-group{max-width:100%}
+  .tabs,.cinema-tabs{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .tabs::-webkit-scrollbar,.cinema-tabs::-webkit-scrollbar{display:none}
+  .bottom-nav{height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));padding:4px 6px calc(4px + env(safe-area-inset-bottom));box-shadow:0 -12px 38px rgba(0,0,0,.46),0 -1px 0 rgba(0,212,255,.08);z-index:140}
+  .bottom-nav-item{flex:1;min-width:0;max-width:86px;height:52px;border-radius:16px;padding:7px 4px}
+  .bottom-nav-item.active{background:linear-gradient(135deg,rgba(0,212,255,.13),rgba(124,58,237,.1))}
+  .player-bar{bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));z-index:135}
+  .player-content{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:9px var(--mobile-edge)}
+  .player-left{min-width:0}
+  .player-center{align-items:flex-end}
+  .player-title,.player-artist{max-width:100%}
+  .fab-ai{right:var(--mobile-edge);bottom:calc(var(--bottom-nav-height) + 86px + env(safe-area-inset-bottom))}
+  .fab-ai-tooltip{right:var(--mobile-edge);bottom:calc(var(--bottom-nav-height) + 148px + env(safe-area-inset-bottom))}
+  .scroll-top{right:var(--mobile-edge);bottom:calc(var(--bottom-nav-height) + 150px + env(safe-area-inset-bottom))}
+  .pwa-install-banner{left:12px;right:12px;bottom:calc(var(--bottom-nav-height) + 14px + env(safe-area-inset-bottom));max-width:none}
+  .toast-container{top:72px;left:12px;right:12px}
+  .toast{min-width:0;max-width:none;width:100%}
+  .footer{padding:34px 0 calc(var(--bottom-nav-height) + 24px + env(safe-area-inset-bottom))}
+  .ai-page{padding-top:12px;min-height:calc(100svh - 68px - var(--bottom-nav-height))}
+  .ai-welcome{padding:28px 0 26px}
+  .ai-msg-bubble{max-width:92%}
+  .ai-chat-stream{padding-bottom:18px}
+  .ai-input-dock{bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom));margin-left:-4px;margin-right:-4px;border-radius:18px 18px 0 0;padding:10px}
+  .cinema-tabs{padding-bottom:4px}
+  .cinema-detail{gap:22px}
+  .cinema-poster{margin:0 auto}
+  .cinema-player{border-radius:12px}
+  .cinema-player::before,.cinema-player iframe,.cinema-player video{border-radius:12px}
+  .cinema-player-controls{padding:0 10px 10px;gap:6px}
+}
+
+@media(max-width:640px){
+  .navbar-auth{display:none}
+  .hero-bg,.hero-overlay{min-height:460px}
+  .hero-title{font-size:1.9rem;line-height:1.12;letter-spacing:0}
+  .hero-desc{font-size:.95rem;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .greeting-stats{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px!important;width:100%}
+  .greeting-stat{min-width:0;padding:13px 8px}
+  .greeting-stat-num{font-size:1.28rem}
+  .greeting-stat-label{font-size:.68rem}
+  .plan-evening-card{padding:24px 16px;border-radius:22px}
+  .plan-evening-opts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .plan-evening-opt{width:100%;padding:9px 10px}
+  .cinema-volume-wrap,.cinema-time{display:none}
+  .cinema-quality-btn{padding:5px 9px!important}
+}
+
+@media(max-width:480px){
+  :root{--bottom-nav-height:60px;--mobile-edge:14px}
+  .container{padding:0 var(--mobile-edge)}
+  .navbar-inner{padding:0 var(--mobile-edge)}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .home-section .carousel .card{width:146px}
+  .hero-bg,.hero-overlay{min-height:430px}
+  .hero-title{font-size:1.65rem}
+  .hero-actions .btn{flex-basis:100%}
+  .page-header{margin-bottom:22px}
+  .page-header h1{line-height:1.15}
+  .btn-back{margin-bottom:14px}
+  .detail-poster{width:min(210px,72vw)}
+  .bottom-nav-item{height:50px}
+  .bottom-nav-item i{font-size:1.34rem}
+  .bottom-nav-item span{font-size:.63rem}
+  .player-content{grid-template-columns:minmax(0,1fr) auto;padding:8px var(--mobile-edge)}
+  .player-cover{width:38px;height:38px}
+  .player-btn{width:32px;height:32px}
+  .player-btn-main{width:40px;height:40px}
+  .player-time{display:none}
+  .fab-ai{width:52px;height:52px;bottom:calc(var(--bottom-nav-height) + 76px + env(safe-area-inset-bottom))}
+  .fab-ai-tooltip{max-width:calc(100vw - 32px);bottom:calc(var(--bottom-nav-height) + 134px + env(safe-area-inset-bottom))}
+  .scroll-top{bottom:calc(var(--bottom-nav-height) + 136px + env(safe-area-inset-bottom))}
+  .ai-input-dock .input{padding:12px}
+  .ai-input-dock .btn{width:46px;padding:0;flex-shrink:0}
+  .cinema-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .cinema-card-title{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;min-height:2.2em}
+}
+
+@media(max-width:360px){
+  :root{--mobile-edge:12px}
+  .brand-text{font-size:.98rem}
+  .mobile-menu-btn{width:40px;height:40px}
+  .bottom-nav-item{border-radius:14px}
+  .bottom-nav-item span{display:none}
+  .bottom-nav-item i{font-size:1.4rem}
+  .hero-title{font-size:1.5rem}
+  .section-title{font-size:1.08rem}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .page-transition,.card,.mobile-menu.open,.bottom-nav-item.active::after{animation:none!important}
+  .card::after{display:none}
+}
     </style>
 </head>
 <body>
@@ -1697,14 +1852,29 @@ function MusicPlayerProvider({ children }) {
 const useMusicPlayer = () => useContext(MusicPlayerCtx);
 
 // ==================== ROUTER ====================
+function getClientPath() {
+  const hashPath = window.location.hash.slice(1);
+  if (hashPath) return hashPath;
+  const fullPath = `${window.location.pathname || '/'}${window.location.search || ''}`;
+  return fullPath || '/';
+}
+
 function useRouter() {
-  const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+  const [path, setPath] = useState(getClientPath);
   useEffect(() => {
-    const handler = () => setPath(window.location.hash.slice(1) || '/');
+    const handler = () => setPath(getClientPath());
     window.addEventListener('hashchange', handler);
-    return () => window.removeEventListener('hashchange', handler);
+    window.addEventListener('popstate', handler);
+    return () => {
+      window.removeEventListener('hashchange', handler);
+      window.removeEventListener('popstate', handler);
+    };
   }, []);
-  const navigate = useCallback((p) => { window.location.hash = p; window.scrollTo({ top: 0, behavior: 'smooth' }); }, []);
+  const navigate = useCallback((p) => {
+    window.history.pushState(null, '', p);
+    setPath(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
   const goBack = useCallback(() => { window.history.back(); }, []);
   return { path, navigate, goBack };
 }
@@ -1752,7 +1922,7 @@ function ErrorBoundary({ children }) {
       <div className="not-found-code">!</div>
       <h2>Something went wrong</h2>
       <p>An unexpected error occurred. Please try refreshing the page.</p>
-      <button className="btn btn-primary" onClick={() => { setHasError(false); window.location.hash = '#/'; window.location.reload(); }}>Refresh</button>
+      <button className="btn btn-primary" onClick={() => { setHasError(false); window.history.replaceState(null, '', '/'); window.location.reload(); }}>Refresh</button>
     </div>
   );
   return children;
@@ -2049,6 +2219,18 @@ function CarouselWithNav({ children, className = '' }) {
   );
 }
 
+function RailEmpty({ icon, title, subtitle }) {
+  return (
+    <div className="rail-empty">
+      <div className="rail-empty-icon"><i className={icon}></i></div>
+      <div>
+        <div className="rail-empty-title">{title}</div>
+        {subtitle && <div className="rail-empty-sub">{subtitle}</div>}
+      </div>
+    </div>
+  );
+}
+
 function ProgressiveImg({ src, alt, className = '', style }) {
   const [loaded, setLoaded] = useState(false);
   if (!src) return null;
@@ -2258,15 +2440,29 @@ function ThemeSwitcher({ mobile = false }) {
 
 function FloatingAiBtn({ navigate }) {
   const { t } = useLang();
+  const player = useMusicPlayer();
   const [showTip, setShowTip] = useState(false);
   useEffect(() => {
     const seen = localStorage.getItem('fab_tip_seen');
     if (!seen) { setTimeout(() => setShowTip(true), 3000); }
   }, []);
+  useEffect(() => {
+    if (player?.playingTrack && showTip) setShowTip(false);
+  }, [player?.playingTrack, showTip]);
+  const dismissTip = (e) => {
+    e?.stopPropagation();
+    setShowTip(false);
+    localStorage.setItem('fab_tip_seen', '1');
+  };
   const handleClick = () => { setShowTip(false); localStorage.setItem('fab_tip_seen', '1'); navigate('/ai'); };
   return (
     <>
-      {showTip && <div className="fab-ai-tooltip" onClick={()=>{setShowTip(false);localStorage.setItem('fab_tip_seen','1')}}><i className="ri-sparkling-2-fill" style={{color:'var(--accent-primary)',marginRight:6}}></i>{t('askAssistant')}</div>}
+      {showTip && !player?.playingTrack && (
+        <div className="fab-ai-tooltip" role="status">
+          <span className="fab-ai-tooltip-text"><i className="ri-sparkling-2-fill" style={{color:'var(--accent-primary)'}}></i>{t('askAssistant')}</span>
+          <button type="button" className="fab-ai-tooltip-close" onClick={dismissTip} aria-label="Close assistant tip"><i className="ri-close-line"></i></button>
+        </div>
+      )}
       <button className="fab-ai" onClick={handleClick} title={t('aiAssistant')}><i className="ri-sparkling-2-fill"></i></button>
     </>
   );
@@ -2686,7 +2882,10 @@ function HomePage({ navigate }) {
 
         <RevealSection className="home-section">
           <div className="section-header"><h2 className="section-title"><i className="ri-fire-line"></i> {t('trendingMovies')}</h2><span className="section-link" onClick={()=>navigate('/movies')}>{t('seeAll')} <i className="ri-arrow-right-s-line"></i></span></div>
-          <CarouselWithNav>{trending.map(m => <Card key={m.id} type="movie" image={m.poster_url} title={m.title} subtitle={m.release_date?.slice(0,4)} rating={m.vote_average} onClick={()=>navigate('/movies/'+m.id)} />)}</CarouselWithNav>
+          <CarouselWithNav>
+            {trending.length > 0 ? trending.map(m => <Card key={m.id} type="movie" image={m.poster_url} title={m.title} subtitle={m.release_date?.slice(0,4)} rating={m.vote_average} onClick={()=>navigate('/movies/'+m.id)} />)
+              : <RailEmpty icon="ri-film-line" title={t('noMovies')} />}
+          </CarouselWithNav>
         </RevealSection>
         <RevealSection className="home-section" delay={100}>
           <div className="section-header"><h2 className="section-title"><i className="ri-book-open-line"></i> {t('popularBooks')}</h2><span className="section-link" onClick={()=>navigate('/books')}>{t('seeAll')} <i className="ri-arrow-right-s-line"></i></span></div>
@@ -2750,8 +2949,8 @@ function MoviesPage({ navigate }) {
   useEffect(() => { api.get('/api/movies/genres').then(setGenres).catch(()=>{}); }, []);
   useEffect(() => {
     setLoading(true); setPage(1); setHasMore(true);
-    const hash = window.location.hash;
-    const qMatch = hash.match(/[?&]q=([^&]*)/);
+    const route = window.location.hash.slice(1) || `${window.location.pathname}${window.location.search}`;
+    const qMatch = route.match(/[?&]q=([^&]*)/);
     if (qMatch) { const q = decodeURIComponent(qMatch[1]); setQuery(q); api.get('/api/movies/search?q='+encodeURIComponent(q)).then(d=>{setMovies(d);setHasMore(d.length>=40)}).finally(()=>setLoading(false)); }
     else if (activeGenre) { api.get('/api/movies/discover?genre='+activeGenre).then(d=>{setMovies(d);setHasMore(d.length>=40)}).finally(()=>setLoading(false)); }
     else { api.get('/api/movies/trending').then(d=>{setMovies(d);setHasMore(d.length>=40)}).finally(()=>setLoading(false)); }

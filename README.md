@@ -1,55 +1,80 @@
 # Pulse
 
-Pulse — full-stack entertainment platform: movies, books, music, events, AI assistant, and admin-only Cinema mirrors (HDRezka + AnimeVost).
+Pulse is a Flask web application with a static React/PWA frontend for personalized entertainment recommendations. It combines movies, books, music, events, favorites, ratings, watchlists, activity history, and an AI assistant in one interface.
 
-## Project structure
+## Features
 
-- `backend/` — Flask API + SQLite + static web app served from `backend/static/index.html`
-- `frontend/` — separate React/Vite source (development workspace)
-- `start.bat` / `start.sh` — local startup scripts
+- User registration and JWT authentication
+- Movie, book, music, and event catalogs
+- Favorites, ratings, watchlist, reminders, and activity log
+- Personalized recommendations based on user behavior
+- AI chat assistant powered by Google Gemini when `GOOGLE_API_KEY` is configured
+- Admin endpoints for content rules, pinned items, audit, and settings
+- Mobile-friendly static frontend served from `backend/static`
 
-## What is safe to upload to GitHub
-
-Upload the full project root. Sensitive and runtime files are excluded by `.gitignore`:
-
-- `.env` files
-- databases (`*.db`)
-- logs
-- `node_modules`
-- `.claude` local settings
-
-## Local run
+## Local Setup
 
 ```bash
-cd backend
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-python app.py
+cp backend/.env.example backend/.env
+python backend/init_db.py
+python backend/app.py
 ```
 
-App runs on `http://localhost:5000`.
+On Windows PowerShell:
 
-## Railway deploy
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item backend\.env.example backend\.env
+python backend\init_db.py
+python backend\app.py
+```
 
-This repo is prepared for Railway:
+The app runs on `http://127.0.0.1:5000`.
 
-- root `requirements.txt` points to `backend/requirements.txt`
-- `Procfile` uses: `python backend/app.py`
-- app reads `PORT` automatically
+## Environment Variables
 
-### Required env vars on Railway
+Required:
 
 - `SECRET_KEY`
 - `JWT_SECRET_KEY`
 
-### Optional env vars (recommended)
+Optional:
 
 - `KINOPOISK_API_KEY`
 - `GOOGLE_BOOKS_API_KEY`
 - `GOOGLE_API_KEY`
-- `CORS_ORIGINS` (set your Railway domain here)
+- `GEMINI_PRIMARY_MODEL`
+- `GEMINI_FALLBACK_MODEL`
+- `DEFAULT_DAILY_LIMIT`
+- `DATABASE_PATH`
+- `CORS_ORIGINS`
 
-Example `CORS_ORIGINS`:
+## Railway
 
-```text
-https://your-app.up.railway.app,http://localhost:5000,http://127.0.0.1:5000
+The repository includes:
+
+- `railway.json`
+- `Procfile`
+- `build.sh`
+
+Railway should install dependencies with `pip install -r requirements.txt`, initialize the database, and start the app with Gunicorn.
+
+For persistent SQLite storage, create a Railway volume and set:
+
+```bash
+DATABASE_PATH=/data/entertainment.db
+```
+
+Then mount the volume at `/data`.
+
+## Tests
+
+```bash
+cd backend
+python -m pytest tests -q --tb=short --ignore=tests/test_hdrezka_api.py --ignore=tests/test_hdrezka_integration.py
 ```

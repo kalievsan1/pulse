@@ -1,7 +1,7 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from flask import Flask, send_from_directory
+from flask import Flask, request, send_from_directory
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_limiter import Limiter
@@ -102,6 +102,19 @@ def create_app():
 
     @app.route('/')
     def index():
+        return send_from_directory(static_dir, 'index.html')
+
+    @app.errorhandler(404)
+    def spa_fallback(error):
+        path = request.path.lstrip('/')
+        filename = os.path.basename(path)
+
+        if request.path.startswith('/api/'):
+            return {'error': 'Not found'}, 404
+
+        if '.' in filename:
+            return {'error': 'Not found'}, 404
+
         return send_from_directory(static_dir, 'index.html')
 
     return app

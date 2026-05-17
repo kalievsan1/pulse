@@ -21,6 +21,10 @@ node_modules/
 **/node_modules/
 frontend/dist/
 
+# Build outputs
+build/
+dist/
+
 # Logs
 *.log
 backend/logs/
@@ -36,3 +40,25 @@ backend/server.log
 .DS_Store
 Thumbs.db
 *.swp
+
+# Local diploma/report working artifacts
+presentation_work/
+tmp_*.html
+full_text.txt
+_diploma_text.txt
+DIPLOMA_*.md
+IMAGE_INSERT_GUIDE.txt
+PLANTUML_CODES.txt
+QUICK_IMAGE_GUIDE.txt
+WHERE_TO_INSERT_IMAGES.txt
+prilozhenie.docx
+add_errors_for_testing.py
+add_image_markers*.py
+ai_detector.py
+analyze_*.py
+deep_*.py
+extract_text.py
+find_templates.py
+fix_new_repetitions.py
+highlight_cliches.py
+replace_repetitions.py
