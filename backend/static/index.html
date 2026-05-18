@@ -3147,7 +3147,7 @@ function EventsPage() {
   return (
     <div className="container fade-in" style={{paddingTop:20}}>
       <div className="page-header"><div className="page-header-icon"><i className="ri-calendar-event-line"></i><h1>{t('events')}</h1></div>
-        <p style={{color:'var(--text-muted)'}}>kino.kz — {lang === 'ru' ? 'Афиша событий Казахстана' : 'Kazakhstan Events'}</p>
+        <p style={{color:'var(--text-muted)'}}>kino.kz + Ticketon — {lang === 'ru' ? 'Афиша событий Казахстана' : 'Kazakhstan Events'}</p>
       </div>
       <form onSubmit={handleSearch} style={{display:'flex',gap:8,marginBottom:16}}>
         <input className="input" style={{flex:1}} placeholder={t('searchEvents')} value={query} onChange={e=>setQuery(e.target.value)} />
