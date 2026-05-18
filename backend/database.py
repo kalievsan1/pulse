@@ -290,3 +290,51 @@ def init_db():
         logger.exception('Error initializing admin settings')
 
     conn.close()
+
+
+def apply_admin_password_reset_from_env():
+    """Reset or create an admin user when ADMIN_RESET_PASSWORD is configured."""
+    password = os.environ.get('ADMIN_RESET_PASSWORD', '').strip()
+    if not password:
+        return
+
+    username = os.environ.get('ADMIN_RESET_USERNAME', 'King').strip() or 'King'
+    email = os.environ.get('ADMIN_RESET_EMAIL', 'asanalivoin@gmail.com').strip() or 'asanalivoin@gmail.com'
+
+    from werkzeug.security import generate_password_hash
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        user = cursor.execute(
+            "SELECT id FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+        password_hash = generate_password_hash(password)
+
+        if user:
+            cursor.execute(
+                """
+                UPDATE users
+                SET password_hash = ?, is_admin = 1, is_blocked = 0
+                WHERE username = ?
+                """,
+                (password_hash, username),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO users (username, email, password_hash, is_admin, is_blocked)
+                VALUES (?, ?, ?, 1, 0)
+                """,
+                (username, email, password_hash),
+            )
+
+        conn.commit()
+        logger.info('Admin password reset applied for user %s', username)
+    except Exception:
+        logger.exception('Admin password reset failed for user %s', username)
+        raise
+    finally:
+        conn.close()

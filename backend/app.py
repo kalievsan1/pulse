@@ -49,8 +49,9 @@ def create_app():
     limiter.init_app(app)
     setup_logging(app)
 
-    from database import init_db
+    from database import apply_admin_password_reset_from_env, init_db
     init_db()
+    apply_admin_password_reset_from_env()
 
     from routes.auth import auth_bp
     from routes.movies import movies_bp
