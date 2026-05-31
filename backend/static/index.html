@@ -430,6 +430,16 @@ a:hover{color:#33dfff}
 .event-card-venue i{color:#22d3ee}
 .event-card-price{color:#fff7d6;background:linear-gradient(135deg,rgba(250,204,21,.2),rgba(245,158,11,.08));border:1px solid rgba(250,204,21,.5);box-shadow:0 0 16px rgba(250,204,21,.13)}
 .event-card-price i{color:#facc15}
+.event-card-rating{color:#fff4c2;background:linear-gradient(135deg,rgba(251,191,36,.18),rgba(245,158,11,.08));border:1px solid rgba(251,191,36,.42);box-shadow:0 0 16px rgba(251,191,36,.1)}
+.event-card-rating i{color:#fbbf24}
+.event-card-time{color:#dffdf3;background:linear-gradient(135deg,rgba(52,211,153,.16),rgba(16,185,129,.07));border:1px solid rgba(52,211,153,.38);box-shadow:0 0 16px rgba(52,211,153,.1)}
+.event-card-time i{color:#34d399}
+.event-source-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:var(--text-secondary);font-size:.62rem;font-weight:800;line-height:1;text-transform:uppercase;letter-spacing:.02em}
+.event-place-cover{aspect-ratio:168/136;background:linear-gradient(135deg,rgba(0,212,255,.12),rgba(124,58,237,.14));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#e8fbff;border-bottom:1px solid rgba(255,255,255,.06);position:relative;overflow:hidden}
+.event-place-cover::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.12),transparent 34%),linear-gradient(120deg,transparent,rgba(255,255,255,.05),transparent);opacity:.9}
+.event-place-cover i{position:relative;font-size:2rem;color:var(--accent-primary);filter:drop-shadow(0 0 14px rgba(0,212,255,.35))}
+.event-place-cover span{position:relative;font-size:.72rem;font-weight:800;color:var(--text-secondary)}
+.event-card-description{font-size:.74rem;color:var(--text-muted);line-height:1.35;margin-top:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .event-card-genres{display:flex;gap:6px;flex-wrap:wrap}
 
 /* Auth */
@@ -3138,16 +3148,18 @@ function EventsPage() {
   const handleCat = (cat) => { setActiveCat(cat); loadEvents(cat, activeCity); };
   const handleCity = (city) => { setActiveCity(city); loadEvents(activeCat, city); };
   const handleSearch = (e) => { e.preventDefault(); if(query.trim()) { setLoading(true); setSearchMode(true);
-    api.get('/api/events/search?q='+encodeURIComponent(query)).then(setEvents).finally(()=>setLoading(false)); }};
+    const p = new URLSearchParams({ q: query.trim() });
+    if (activeCity) p.set('city', activeCity);
+    api.get('/api/events/search?' + p).then(setEvents).finally(()=>setLoading(false)); }};
   const clearSearch = () => { setQuery(''); setSearchMode(false); loadEvents(activeCat, activeCity); };
 
   const monthNames = lang === 'ru' ? ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'] : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const catIcons = {concert:'ri-music-2-line',theatre:'ri-drama-line',standup:'ri-mic-line',sport:'ri-boxing-line',art:'ri-palette-line',entertainment:'ri-gamepad-line',family:'ri-parent-line',tours:'ri-compass-3-line'};
+  const catIcons = {concert:'ri-music-2-line',theatre:'ri-drama-line',standup:'ri-mic-line',sport:'ri-boxing-line',art:'ri-palette-line',entertainment:'ri-gamepad-line',family:'ri-parent-line',tours:'ri-compass-3-line',bowling:'ri-bowling-line',billiards:'ri-billiards-line',karaoke:'ri-mic-2-line',quests:'ri-door-open-line'};
 
   return (
     <div className="container fade-in" style={{paddingTop:20}}>
       <div className="page-header"><div className="page-header-icon"><i className="ri-calendar-event-line"></i><h1>{t('events')}</h1></div>
-        <p style={{color:'var(--text-muted)'}}>kino.kz + Ticketon — {lang === 'ru' ? 'Афиша событий Казахстана' : 'Kazakhstan Events'}</p>
+        <p style={{color:'var(--text-muted)'}}>kino.kz + Ticketon + 2GIS — {lang === 'ru' ? 'Афиша и активные развлечения Казахстана' : 'Kazakhstan events and activities'}</p>
       </div>
       <form onSubmit={handleSearch} style={{display:'flex',gap:8,marginBottom:16}}>
         <input className="input" style={{flex:1}} placeholder={t('searchEvents')} value={query} onChange={e=>setQuery(e.target.value)} />
@@ -3181,29 +3193,39 @@ function EventsPage() {
       )}
       {loading ? <SkeletonCard count={6} type="event" />
         : events.length===0 ? <div className="empty-state fade-in"><div className="empty-icon"><i className="ri-calendar-event-line" style={{fontSize:'3rem'}}></i></div><h3>{t('noEvents')}</h3></div>
-        : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>{events.map((e,i) => {
+        : <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,220px),1fr))',gap:16}}>{events.map((e,i) => {
           const d = e.date ? new Date(e.date) : null;
+          const is2gis = e.source === '2gis.kz';
           return (
             <RevealSection key={e.id+'-'+i} className="event-card" delay={Math.min(i,10)*50}>
               {e.image && <div style={{position:'relative',overflow:'hidden',aspectRatio:'168/242',background:'var(--bg-tertiary)'}}>
                 <img src={e.image} alt={e.title} loading="lazy" style={{width:'100%',height:'100%',objectFit:'cover',transition:'transform .3s'}} onMouseOver={ev=>ev.target.style.transform='scale(1.05)'} onMouseOut={ev=>ev.target.style.transform='scale(1)'} />
+                {e.source && <span className="event-source-pill" style={{position:'absolute',top:6,left:6,backdropFilter:'blur(6px)'}}>{e.source}</span>}
                 {e.age && <span style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.75)',color:'#fff',padding:'2px 6px',borderRadius:5,fontSize:'.65rem',fontWeight:700,backdropFilter:'blur(4px)'}}>{e.age}</span>}
                 {d && <div style={{position:'absolute',bottom:6,left:6,background:'rgba(0,0,0,.75)',backdropFilter:'blur(4px)',borderRadius:8,padding:'4px 8px',textAlign:'center',lineHeight:1.1}}>
                   <div style={{fontSize:'.95rem',fontWeight:700,color:'var(--accent)'}}>{d.getDate()}</div>
                   <div style={{fontSize:'.6rem',textTransform:'uppercase',color:'rgba(255,255,255,.7)',letterSpacing:'.04em'}}>{monthNames[d.getMonth()]}</div>
                 </div>}
               </div>}
+              {!e.image && <div className="event-place-cover">
+                <i className={catIcons[e.category] || (is2gis ? 'ri-map-pin-2-line' : 'ri-calendar-event-line')}></i>
+                <span>{e.source || e.type}</span>
+              </div>}
               <div style={{padding:'10px 12px 12px'}}>
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
                   <span className="badge badge-accent" style={{fontSize:'.65rem',padding:'2px 7px'}}>{e.type}</span>
+                  {!e.image && e.source && <span className="event-source-pill">{e.source}</span>}
                 </div>
                 <div style={{fontSize:'.88rem',fontWeight:600,marginBottom:6,lineHeight:1.3,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{e.title}</div>
                 <div className="event-card-compact-meta">
                   {e.venue && <div className="event-card-info-chip event-card-venue"><i className="ri-map-pin-2-fill"></i><span className="event-card-info-text">{e.venue}{e.city?', '+e.city:''}</span></div>}
+                  {e.time && <div className="event-card-info-chip event-card-time"><i className="ri-time-line"></i><span className="event-card-info-text">{e.time}</span></div>}
+                  {e.rating && <div className="event-card-info-chip event-card-rating"><i className="ri-star-fill"></i><span className="event-card-info-text">{e.rating}{e.review_count ? ` (${e.review_count})` : ''}</span></div>}
                   {e.price && <div className="event-card-info-chip event-card-price"><i className="ri-ticket-line"></i><span className="event-card-info-text">{e.price}</span></div>}
                 </div>
+                {e.description && <div className="event-card-description">{e.description}</div>}
                 {e.url && <a href={e.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm btn-ripple" style={{width:'100%',marginTop:8,textAlign:'center',fontSize:'.75rem',padding:'6px 0'}}>
-                  <i className="ri-ticket-line"></i> {lang === 'ru' ? 'Купить билет' : 'Buy ticket'}
+                  <i className={is2gis ? 'ri-map-pin-2-line' : 'ri-ticket-line'}></i> {is2gis ? (lang === 'ru' ? 'Открыть в 2GIS' : 'Open in 2GIS') : (lang === 'ru' ? 'Купить билет' : 'Buy ticket')}
                 </a>}
               </div>
             </RevealSection>

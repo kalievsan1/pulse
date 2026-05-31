@@ -25,10 +25,11 @@ def browse():
 def search():
     """Search events by query string."""
     q = request.args.get('q', '')
+    city = request.args.get('city')
     if not q:
         return jsonify([])
     try:
-        return jsonify(events_service.search(q))
+        return jsonify(events_service.search(q, city=city))
     except Exception as e:
         logger.exception('Error searching events: q=%s', q)
         return jsonify({'error': 'Service temporarily unavailable'}), 503

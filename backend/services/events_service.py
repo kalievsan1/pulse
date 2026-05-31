@@ -1,18 +1,21 @@
-"""Events service — live parsing from kino.kz and Ticketon for Kazakhstan events."""
+"""Events service — live parsing from kino.kz, Ticketon, and 2GIS."""
 
 import logging
+import os
 import re
 import json
 import time
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
 KINOKZ_BASE = 'https://kino.kz/ru'
 TICKETON_BASE = 'https://ticketon.kz'
-CATEGORIES = {
+DGIS_BASE = 'https://catalog.api.2gis.com/3.0/items'
+KINO_CATEGORIES = {
     'concert': 'Концерты',
     'theatre': 'Театры',
     'standup': 'Стендап',
@@ -21,6 +24,13 @@ CATEGORIES = {
     'entertainment': 'Развлечения',
     'family': 'Семейные',
     'tours': 'Туры',
+}
+CATEGORIES = {
+    **KINO_CATEGORIES,
+    'bowling': 'Боулинг',
+    'billiards': 'Бильярд',
+    'karaoke': 'Караоке',
+    'quests': 'Квесты',
 }
 TICKETON_CATEGORIES = {
     'concert': 'concerts',
@@ -32,11 +42,36 @@ TICKETON_CATEGORIES = {
     'family': 'children',
     'tours': 'tours',
 }
+DGIS_CATEGORIES = {
+    'bowling': ('боулинг', 'Боулинг'),
+    'billiards': ('бильярд', 'Бильярд'),
+    'karaoke': ('караоке', 'Караоке'),
+    'quests': ('квесты', 'Квесты'),
+    'entertainment': ('развлечения', 'Развлечения'),
+    'family': ('детские развлечения', 'Семейные'),
+    'sport': ('спортивные развлечения', 'Спорт'),
+}
+DGIS_DEFAULT_CATEGORIES = ('bowling', 'billiards', 'karaoke', 'quests')
 CITIES = {
     '1': 'Астана',
     '2': 'Алматы',
 }
+DGIS_CITIES = {
+    'almaty': {
+        'aliases': ('алматы', 'almaty'),
+        'name': 'Алматы',
+        'slug': 'almaty',
+        'location': '76.92861,43.25667',
+    },
+    'astana': {
+        'aliases': ('астана', 'astana', 'нур-султан', 'nur-sultan', 'nursultan'),
+        'name': 'Астана',
+        'slug': 'astana',
+        'location': '71.44907,51.16939',
+    },
+}
 TIMEOUT = 15
+DGIS_TIMEOUT = 6
 CACHE_TTL = 600  # 10 minutes
 
 
@@ -65,6 +100,23 @@ class KinoKzParser:
 
     def _normalize_text(self, value):
         return re.sub(r'\s+', ' ', (value or '').replace('\xa0', ' ')).strip()
+
+    def _2gis_api_key(self):
+        """Read the 2GIS API key lazily so env changes are picked up after restart."""
+        return (
+            os.environ.get('DGIS_API_KEY')
+            or os.environ.get('TWOGIS_API_KEY')
+            or os.environ.get('GIS2_API_KEY')
+            or os.environ.get('2GIS_API_KEY')
+        )
+
+    def _2gis_city(self, city=None):
+        if city:
+            city_lower = city.lower()
+            for meta in DGIS_CITIES.values():
+                if any(alias in city_lower for alias in meta['aliases']):
+                    return meta
+        return DGIS_CITIES['almaty']
 
     def _ticketon_city(self, city):
         """Return Ticketon city slug/display pair for supported city filters."""
@@ -151,7 +203,7 @@ class KinoKzParser:
         return {
             'id': event_id,
             'title': name,
-            'type': event_type or (CATEGORIES.get(category, '') if category else ''),
+            'type': event_type or (KINO_CATEGORIES.get(category, '') if category else ''),
             'venue': venue,
             'city': city,
             'date': next_date,
@@ -161,9 +213,61 @@ class KinoKzParser:
             'age': age_label,
             'description': raw.get('presentation', '') or '',
             'genres': [],
+            'category': category or '',
             'source': 'kino.kz',
             'url': f'https://kino.kz/ru/{category}/event/{event_id}' if category else '',
         }
+
+    def _fetch_kino_category(self, category, city_id):
+        cache_key = f'browse:{category}:{city_id}'
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        url = f'{KINOKZ_BASE}/{category}'
+        try:
+            r = self.session.get(
+                url,
+                cookies={'city': city_id},
+                timeout=TIMEOUT,
+            )
+            if r.status_code != 200:
+                logger.warning('kino.kz %s returned %s', category, r.status_code)
+                return []
+
+            raw_events = self._extract_events_from_rsc(r.text)
+            formatted = [self._format_event(e, category=category) for e in raw_events]
+            seen = set()
+            unique = []
+            for e in formatted:
+                if e['id'] in seen:
+                    continue
+                seen.add(e['id'])
+                unique.append(e)
+            self._set_cached(cache_key, unique)
+            return unique
+        except Exception:
+            logger.exception('Error fetching kino.kz category %s', category)
+            return []
+
+    def _browse_kino(self, categories, city_id):
+        if not categories:
+            return []
+        if len(categories) == 1:
+            return self._fetch_kino_category(categories[0], city_id)
+
+        events = []
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            future_map = {
+                executor.submit(self._fetch_kino_category, cat, city_id): cat
+                for cat in categories
+            }
+            for future in as_completed(future_map):
+                try:
+                    events.extend(future.result())
+                except Exception:
+                    logger.exception('Kino.kz category future failed: %s', future_map[future])
+        return events
 
     def _ticketon_url(self, category=None, city=None):
         city_slug, _ = self._ticketon_city(city)
@@ -268,7 +372,7 @@ class KinoKzParser:
         _, city_display = self._ticketon_city(city)
         city_name = city_display or meta.get('city', '') or self._infer_city(f'{title} {venue} {card_text}')
 
-        event_type = CATEGORIES.get(category, '')
+        event_type = KINO_CATEGORIES.get(category, '')
         return {
             'id': f'ticketon:{slug}',
             'title': title,
@@ -282,6 +386,7 @@ class KinoKzParser:
             'age': age,
             'description': '',
             'genres': [event_type] if event_type else [],
+            'category': category or '',
             'source': 'ticketon.kz',
             'url': f'{TICKETON_BASE}{href}' if href.startswith('/') else href,
         }
@@ -332,6 +437,9 @@ class KinoKzParser:
             return []
 
     def _browse_ticketon(self, city=None, category=None):
+        if category and category not in TICKETON_CATEGORIES:
+            return []
+
         categories_to_fetch = [category] if category else list(TICKETON_CATEGORIES.keys())
 
         if len(categories_to_fetch) == 1:
@@ -350,6 +458,160 @@ class KinoKzParser:
                     logger.exception('Ticketon category future failed: %s', future_map[future])
         return events
 
+    def _format_2gis_schedule(self, schedule):
+        if not isinstance(schedule, dict):
+            return ''
+        if schedule.get('is_24x7'):
+            return '24/7'
+        if schedule.get('description'):
+            return self._normalize_text(schedule.get('description'))
+        if schedule.get('comment'):
+            return self._normalize_text(schedule.get('comment'))
+        return ''
+
+    def _format_2gis_rating(self, reviews):
+        if not isinstance(reviews, dict):
+            return ''
+        rating = reviews.get('rating') or reviews.get('general_rating') or reviews.get('org_rating')
+        if rating in (None, ''):
+            return ''
+        try:
+            return f'{float(rating):.1f}'
+        except (TypeError, ValueError):
+            return str(rating)
+
+    def _format_2gis_place(self, raw, category=None, city=None, query=None):
+        place_id = raw.get('id')
+        title = self._normalize_text(raw.get('name') or raw.get('full_name') or '')
+        if not place_id or not title:
+            return None
+
+        city_meta = self._2gis_city(city)
+        rubrics = [
+            self._normalize_text(r.get('name'))
+            for r in raw.get('rubrics', [])
+            if isinstance(r, dict) and r.get('name')
+        ]
+        event_type = (DGIS_CATEGORIES.get(category) or (query, query or ''))[1]
+        address = self._normalize_text(
+            raw.get('full_address_name')
+            or raw.get('address_name')
+            or (raw.get('address') or {}).get('building_name')
+            or ''
+        )
+        rating = self._format_2gis_rating(raw.get('reviews'))
+        review_count = ''
+        reviews = raw.get('reviews') or {}
+        if isinstance(reviews, dict):
+            review_count = reviews.get('review_count') or reviews.get('general_review_count') or ''
+        schedule = self._format_2gis_schedule(raw.get('schedule'))
+        summary = ''
+        if isinstance(raw.get('summary'), dict):
+            summary = self._normalize_text(raw['summary'].get('text'))
+        if not summary and rubrics:
+            summary = ', '.join(rubrics[:3])
+
+        return {
+            'id': f'2gis:{place_id}',
+            'title': title,
+            'type': event_type,
+            'venue': address,
+            'city': city_meta['name'],
+            'date': '',
+            'time': schedule,
+            'price': '',
+            'image': '',
+            'age': '',
+            'description': summary,
+            'genres': rubrics or ([event_type] if event_type else []),
+            'category': category or '',
+            'source': '2gis.kz',
+            'url': f'https://2gis.kz/{city_meta["slug"]}/firm/{quote(str(place_id), safe="")}',
+            'rating': rating,
+            'review_count': str(review_count) if review_count else '',
+        }
+
+    def _fetch_2gis_query(self, query, city=None, category=None, page_size=8):
+        api_key = self._2gis_api_key()
+        if not api_key:
+            return []
+
+        city_meta = self._2gis_city(city)
+        cache_key = f'2gis:{query}:{city_meta["slug"]}:{page_size}'
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        params = {
+            'key': api_key,
+            'q': query,
+            'location': city_meta['location'],
+            'radius': 40000,
+            'page_size': page_size,
+            'type': 'branch',
+            'locale': 'ru_KZ',
+            'fields': ','.join([
+                'items.address_name',
+                'items.full_address_name',
+                'items.rubrics',
+                'items.schedule',
+                'items.reviews',
+                'items.summary',
+            ]),
+        }
+
+        try:
+            r = self.session.get(DGIS_BASE, params=params, timeout=DGIS_TIMEOUT)
+            if r.status_code != 200:
+                logger.warning('2GIS query "%s" returned HTTP %s', query, r.status_code)
+                return []
+            payload = r.json()
+            if payload.get('meta', {}).get('code') != 200:
+                logger.warning('2GIS query "%s" returned API code %s', query, payload.get('meta', {}).get('code'))
+                return []
+            places = []
+            for item in payload.get('result', {}).get('items', []):
+                place = self._format_2gis_place(item, category=category, city=city, query=query)
+                if place:
+                    places.append(place)
+            self._set_cached(cache_key, places)
+            return places
+        except Exception:
+            logger.exception('Error fetching 2GIS query "%s"', query)
+            return []
+
+    def _browse_2gis(self, city=None, category=None):
+        if not self._2gis_api_key():
+            return []
+
+        if category and category not in DGIS_CATEGORIES:
+            return []
+
+        categories_to_fetch = [category] if category else list(DGIS_DEFAULT_CATEGORIES)
+        if len(categories_to_fetch) == 1:
+            cat = categories_to_fetch[0]
+            query, _ = DGIS_CATEGORIES[cat]
+            return self._fetch_2gis_query(query, city=city, category=cat, page_size=10)
+
+        events = []
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            future_map = {
+                executor.submit(
+                    self._fetch_2gis_query,
+                    DGIS_CATEGORIES[cat][0],
+                    city,
+                    cat,
+                    5,
+                ): cat
+                for cat in categories_to_fetch
+            }
+            for future in as_completed(future_map):
+                try:
+                    events.extend(future.result())
+                except Exception:
+                    logger.exception('2GIS category future failed: %s', future_map[future])
+        return events
+
     def _event_dedupe_key(self, event):
         title = self._normalize_text(event.get('title', '')).lower()
         title = re.sub(r'[^\w\s]+', '', title)
@@ -360,7 +622,7 @@ class KinoKzParser:
     def browse(self, city=None, event_type=None, category=None, limit=50):
         """Browse events, optionally filtered by city/type/category."""
         # If a specific category is requested, fetch only that
-        categories_to_fetch = [category] if category else list(CATEGORIES.keys())
+        categories_to_fetch = [category] if category in KINO_CATEGORIES else list(KINO_CATEGORIES.keys()) if not category else []
 
         # Determine city cookie
         city_id = '2'  # Default Almaty
@@ -372,39 +634,18 @@ class KinoKzParser:
                 city_id = '2'
 
         all_events = []
-        for cat in categories_to_fetch:
-            cache_key = f'browse:{cat}:{city_id}'
-            cached = self._get_cached(cache_key)
-            if cached is not None:
-                all_events.extend(cached)
-                continue
+        source_futures = {}
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            if categories_to_fetch:
+                source_futures[executor.submit(self._browse_kino, categories_to_fetch, city_id)] = 'kino.kz'
+            source_futures[executor.submit(self._browse_ticketon, city, category)] = 'ticketon.kz'
+            source_futures[executor.submit(self._browse_2gis, city, category)] = '2gis.kz'
 
-            url = f'{KINOKZ_BASE}/{cat}'
-            try:
-                r = self.session.get(
-                    url,
-                    cookies={'city': city_id},
-                    timeout=TIMEOUT,
-                )
-                if r.status_code != 200:
-                    logger.warning('kino.kz %s returned %s', cat, r.status_code)
-                    continue
-
-                raw_events = self._extract_events_from_rsc(r.text)
-                formatted = [self._format_event(e, category=cat) for e in raw_events]
-                # Deduplicate by id
-                seen = set()
-                unique = []
-                for e in formatted:
-                    if e['id'] not in seen:
-                        seen.add(e['id'])
-                        unique.append(e)
-                self._set_cached(cache_key, unique)
-                all_events.extend(unique)
-            except Exception:
-                logger.exception('Error fetching kino.kz category %s', cat)
-
-        all_events.extend(self._browse_ticketon(city=city, category=category))
+            for future in as_completed(source_futures):
+                try:
+                    all_events.extend(future.result())
+                except Exception:
+                    logger.exception('Events source failed: %s', source_futures[future])
 
         # Global dedup across categories/sources (same event can appear in multiple places)
         seen_global = set()
@@ -426,18 +667,29 @@ class KinoKzParser:
 
         return all_events[:limit]
 
-    def search(self, query, city_id='2'):
+    def search(self, query, city=None):
         """Search events across all categories."""
         q = query.lower()
         # Fetch all categories and filter
-        all_events = self.browse(limit=200)
-        return [
+        all_events = self.browse(city=city, limit=200)
+        results = [
             e for e in all_events
             if q in e['title'].lower()
             or q in e.get('venue', '').lower()
             or q in e.get('type', '').lower()
             or q in e.get('city', '').lower()
         ]
+        results.extend(self._fetch_2gis_query(query, city=city, page_size=12))
+
+        seen = set()
+        deduped = []
+        for e in results:
+            key = e.get('id') or self._event_dedupe_key(e)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(e)
+        return deduped[:80]
 
     def get_event(self, event_id, category=None):
         """Get event detail. Try cache first, then detail page."""
